@@ -36,4 +36,12 @@ cp "$CEF_DIR/Resources/chrome_200_percent.pak" "$CEF_DIR/Release/"
 cp "$CEF_DIR/Resources/resources.pak" "$CEF_DIR/Release/"
 cp -r "$CEF_DIR/Resources/locales" "$CEF_DIR/Release/"
 
+# Strip debug symbols from CEF libs (~1.3GB → ~230MB)
+echo "[cef] Stripping debug symbols..."
+strip --strip-unneeded "$CEF_DIR/Release/libcef.so"
+strip --strip-unneeded "$CEF_DIR/Release/libEGL.so"
+strip --strip-unneeded "$CEF_DIR/Release/libGLESv2.so"
+strip --strip-unneeded "$CEF_DIR/Release/libvk_swiftshader.so"
+strip --strip-unneeded "$CEF_DIR/Release/libvulkan.so.1"
+
 echo "[cef] CEF ready at $CEF_DIR (minimal — no H.264, no PipeWire)"
