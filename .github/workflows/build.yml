@@ -1,0 +1,332 @@
+name: Build Packages
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+env:
+  CEF_DIR: /tmp/cef
+  APP_VERSION: "1.0.0"
+
+jobs:
+  build-deb:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake pkg-config \
+            libgtk-3-dev libayatana-appindicator3-dev libnotify-dev \
+            libnss3-dev curl dpkg-dev patchelf
+
+      - name: Download CEF
+        run: bash packaging/download-cef.sh ${{ env.CEF_DIR }}
+
+      - name: Build
+        run: |
+          mkdir -p build && cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DCEF_ROOT=${{ env.CEF_DIR }}
+          make -j$(nproc)
+          patchelf --set-rpath '$ORIGIN' ofl
+
+      - name: Package .deb
+        run: |
+          PKG=ofl_${APP_VERSION}_amd64
+          mkdir -p pkg/${PKG}/DEBIAN
+          mkdir -p pkg/${PKG}/usr/lib/ofl
+          mkdir -p pkg/${PKG}/usr/bin
+          mkdir -p pkg/${PKG}/usr/share/applications
+          mkdir -p pkg/${PKG}/usr/share/metainfo
+          mkdir -p pkg/${PKG}/usr/share/icons/hicolor/scalable/apps
+
+          cp build/ofl pkg/${PKG}/usr/lib/ofl/
+          cp ${{ env.CEF_DIR }}/Release/libcef.so pkg/${PKG}/usr/lib/ofl/
+          cp ${{ env.CEF_DIR }}/Release/libEGL.so pkg/${PKG}/usr/lib/ofl/
+          cp ${{ env.CEF_DIR }}/Release/libGLESv2.so pkg/${PKG}/usr/lib/ofl/
+          cp ${{ env.CEF_DIR }}/Release/libvk_swiftshader.so pkg/${PKG}/usr/lib/ofl/
+          cp ${{ env.CEF_DIR }}/Release/libvulkan.so.1 pkg/${PKG}/usr/lib/ofl/
+          cp ${{ env.CEF_DIR }}/Release/v8_context_snapshot.bin pkg/${PKG}/usr/lib/ofl/
+          cp ${{ env.CEF_DIR }}/Release/vk_swiftshader_icd.json pkg/${PKG}/usr/lib/ofl/
+
+          cp ${{ env.CEF_DIR }}/Resources/icudtl.dat pkg/${PKG}/usr/lib/ofl/
+          cp ${{ env.CEF_DIR }}/Resources/chrome_100_percent.pak pkg/${PKG}/usr/lib/ofl/
+          cp ${{ env.CEF_DIR }}/Resources/chrome_200_percent.pak pkg/${PKG}/usr/lib/ofl/
+          cp ${{ env.CEF_DIR }}/Resources/resources.pak pkg/${PKG}/usr/lib/ofl/
+          cp -r ${{ env.CEF_DIR }}/Resources/locales pkg/${PKG}/usr/lib/ofl/
+
+          printf '#!/bin/sh\nexec /usr/lib/ofl/ofl "$@"\n' > pkg/${PKG}/usr/bin/ofl
+          chmod +x pkg/${PKG}/usr/bin/ofl
+
+          cp data/ofl.desktop pkg/${PKG}/usr/share/applications/
+          cp data/dev.ofl.outlook-lite.appdata.xml pkg/${PKG}/usr/share/metainfo/
+          cp data/ofl.svg pkg/${PKG}/usr/share/icons/hicolor/scalable/apps/
+
+          cat > pkg/${PKG}/DEBIAN/control << 'EOF'
+          Package: ofl
+          Version: VERSION_PLACEHOLDER
+          Section: net
+          Priority: optional
+          Architecture: amd64
+          Depends: libgtk-3-0, libayatana-appindicator3-1, libnotify4, libnss3
+          Maintainer: ofl <ofl@dev.ofl>
+          Description: Outlook Lite for Linux — lightweight Outlook client
+           Native C++/CEF Outlook client with Wayland support, system tray,
+           desktop notifications, and persistent sessions.
+          EOF
+          sed -i 's/^          //' pkg/${PKG}/DEBIAN/control
+          sed -i "s/VERSION_PLACEHOLDER/${APP_VERSION}/" pkg/${PKG}/DEBIAN/control
+
+          dpkg-deb --build pkg/${PKG}
+          mv pkg/${PKG}.deb build/ofl_${APP_VERSION}_amd64.deb
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ofl-deb
+          path: build/ofl_*.deb
+
+  build-rpm:
+    runs-on: ubuntu-24.04
+    container: fedora:41
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          dnf install -y gcc-c++ cmake pkg-config make curl tar bzip2 patchelf \
+            gtk3-devel libayatana-appindicator-gtk3-devel libnotify-devel \
+            nss-devel rpm-build
+
+      - name: Download CEF
+        run: bash packaging/download-cef.sh ${{ env.CEF_DIR }}
+
+      - name: Build
+        run: |
+          mkdir -p build && cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DCEF_ROOT=${{ env.CEF_DIR }}
+          make -j$(nproc)
+          patchelf --set-rpath '$ORIGIN' ofl
+
+      - name: Package .rpm
+        run: |
+          mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+          DESTDIR=$(mktemp -d)
+
+          mkdir -p ${DESTDIR}/usr/lib/ofl
+          mkdir -p ${DESTDIR}/usr/bin
+          mkdir -p ${DESTDIR}/usr/share/applications
+          mkdir -p ${DESTDIR}/usr/share/metainfo
+          mkdir -p ${DESTDIR}/usr/share/icons/hicolor/scalable/apps
+
+          cp build/ofl ${DESTDIR}/usr/lib/ofl/
+          cp ${{ env.CEF_DIR }}/Release/libcef.so ${DESTDIR}/usr/lib/ofl/
+          cp ${{ env.CEF_DIR }}/Release/libEGL.so ${DESTDIR}/usr/lib/ofl/
+          cp ${{ env.CEF_DIR }}/Release/libGLESv2.so ${DESTDIR}/usr/lib/ofl/
+          cp ${{ env.CEF_DIR }}/Release/libvk_swiftshader.so ${DESTDIR}/usr/lib/ofl/
+          cp ${{ env.CEF_DIR }}/Release/libvulkan.so.1 ${DESTDIR}/usr/lib/ofl/
+          cp ${{ env.CEF_DIR }}/Release/v8_context_snapshot.bin ${DESTDIR}/usr/lib/ofl/
+          cp ${{ env.CEF_DIR }}/Release/vk_swiftshader_icd.json ${DESTDIR}/usr/lib/ofl/
+          cp ${{ env.CEF_DIR }}/Resources/icudtl.dat ${DESTDIR}/usr/lib/ofl/
+          cp ${{ env.CEF_DIR }}/Resources/chrome_100_percent.pak ${DESTDIR}/usr/lib/ofl/
+          cp ${{ env.CEF_DIR }}/Resources/chrome_200_percent.pak ${DESTDIR}/usr/lib/ofl/
+          cp ${{ env.CEF_DIR }}/Resources/resources.pak ${DESTDIR}/usr/lib/ofl/
+          cp -r ${{ env.CEF_DIR }}/Resources/locales ${DESTDIR}/usr/lib/ofl/
+
+          printf '#!/bin/sh\nexec /usr/lib/ofl/ofl "$@"\n' > ${DESTDIR}/usr/bin/ofl
+          chmod +x ${DESTDIR}/usr/bin/ofl
+
+          cp data/ofl.desktop ${DESTDIR}/usr/share/applications/
+          cp data/dev.ofl.outlook-lite.appdata.xml ${DESTDIR}/usr/share/metainfo/
+          cp data/ofl.svg ${DESTDIR}/usr/share/icons/hicolor/scalable/apps/
+
+          cat > ~/rpmbuild/SPECS/ofl.spec << SPEC
+          Name:           ofl
+          Version:        ${APP_VERSION}
+          Release:        1%{?dist}
+          Summary:        Outlook Lite for Linux — lightweight Outlook client
+          License:        MIT
+          URL:            https://github.com/karthick-kk/outlook-lite-for-linux
+
+          AutoReqProv:    no
+          Requires:       gtk3, libnotify, nss
+
+          %description
+          Native C++/CEF Outlook client with Wayland support, system tray,
+          desktop notifications, and persistent sessions.
+
+          %install
+          cp -a ${DESTDIR}/* %{buildroot}/
+
+          %files
+          /usr/lib/ofl/
+          /usr/bin/ofl
+          /usr/share/applications/ofl.desktop
+          /usr/share/metainfo/dev.ofl.outlook-lite.appdata.xml
+          /usr/share/icons/hicolor/scalable/apps/ofl.svg
+          SPEC
+          sed -i 's/^          //' ~/rpmbuild/SPECS/ofl.spec
+
+          QA_RPATHS=0x0002 rpmbuild -bb ~/rpmbuild/SPECS/ofl.spec
+          cp ~/rpmbuild/RPMS/x86_64/ofl-*.rpm build/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ofl-rpm
+          path: build/ofl-*.rpm
+
+  build-arch:
+    runs-on: ubuntu-24.04
+    container: archlinux:base-devel
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          pacman -Syu --noconfirm
+          pacman -S --noconfirm cmake pkg-config gtk3 libayatana-appindicator \
+            libnotify nss curl tar patchelf fakeroot zstd
+
+      - name: Download CEF
+        run: bash packaging/download-cef.sh ${{ env.CEF_DIR }}
+
+      - name: Build
+        run: |
+          mkdir -p build && cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DCEF_ROOT=${{ env.CEF_DIR }}
+          make -j$(nproc)
+          patchelf --set-rpath '$ORIGIN' ofl
+
+      - name: Package .pkg.tar.zst
+        run: |
+          PKGDIR=$(mktemp -d)
+          mkdir -p ${PKGDIR}/usr/lib/ofl
+          mkdir -p ${PKGDIR}/usr/bin
+          mkdir -p ${PKGDIR}/usr/share/applications
+          mkdir -p ${PKGDIR}/usr/share/metainfo
+          mkdir -p ${PKGDIR}/usr/share/icons/hicolor/scalable/apps
+
+          cp build/ofl ${PKGDIR}/usr/lib/ofl/
+          cp ${{ env.CEF_DIR }}/Release/libcef.so ${PKGDIR}/usr/lib/ofl/
+          cp ${{ env.CEF_DIR }}/Release/libEGL.so ${PKGDIR}/usr/lib/ofl/
+          cp ${{ env.CEF_DIR }}/Release/libGLESv2.so ${PKGDIR}/usr/lib/ofl/
+          cp ${{ env.CEF_DIR }}/Release/libvk_swiftshader.so ${PKGDIR}/usr/lib/ofl/
+          cp ${{ env.CEF_DIR }}/Release/libvulkan.so.1 ${PKGDIR}/usr/lib/ofl/
+          cp ${{ env.CEF_DIR }}/Release/v8_context_snapshot.bin ${PKGDIR}/usr/lib/ofl/
+          cp ${{ env.CEF_DIR }}/Release/vk_swiftshader_icd.json ${PKGDIR}/usr/lib/ofl/
+          cp ${{ env.CEF_DIR }}/Resources/icudtl.dat ${PKGDIR}/usr/lib/ofl/
+          cp ${{ env.CEF_DIR }}/Resources/chrome_100_percent.pak ${PKGDIR}/usr/lib/ofl/
+          cp ${{ env.CEF_DIR }}/Resources/chrome_200_percent.pak ${PKGDIR}/usr/lib/ofl/
+          cp ${{ env.CEF_DIR }}/Resources/resources.pak ${PKGDIR}/usr/lib/ofl/
+          cp -r ${{ env.CEF_DIR }}/Resources/locales ${PKGDIR}/usr/lib/ofl/
+
+          printf '#!/bin/sh\nexec /usr/lib/ofl/ofl "$@"\n' > ${PKGDIR}/usr/bin/ofl
+          chmod +x ${PKGDIR}/usr/bin/ofl
+
+          cp data/ofl.desktop ${PKGDIR}/usr/share/applications/
+          cp data/dev.ofl.outlook-lite.appdata.xml ${PKGDIR}/usr/share/metainfo/
+          cp data/ofl.svg ${PKGDIR}/usr/share/icons/hicolor/scalable/apps/
+
+          PKG_SIZE=$(du -sb ${PKGDIR}/usr | cut -f1)
+          cat > ${PKGDIR}/.PKGINFO << EOF
+          pkgname = ofl
+          pkgver = ${APP_VERSION}-1
+          pkgdesc = Outlook Lite for Linux — lightweight Outlook client
+          url = https://github.com/karthick-kk/outlook-lite-for-linux
+          builddate = $(date +%s)
+          packager = ofl CI
+          size = ${PKG_SIZE}
+          arch = x86_64
+          license = MIT
+          depend = gtk3
+          depend = libayatana-appindicator
+          depend = libnotify
+          depend = nss
+          EOF
+          sed -i 's/^          //' ${PKGDIR}/.PKGINFO
+
+          cd ${PKGDIR}
+          fakeroot -- bash -c 'tar cf - .PKGINFO usr | zstd -19 -o /tmp/ofl.pkg.tar.zst'
+          cp /tmp/ofl.pkg.tar.zst $GITHUB_WORKSPACE/build/ofl-${APP_VERSION}-1-x86_64.pkg.tar.zst
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ofl-arch
+          path: build/ofl-*.pkg.tar.zst
+
+  build-binary:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake pkg-config \
+            libgtk-3-dev libayatana-appindicator3-dev libnotify-dev \
+            libnss3-dev curl patchelf
+
+      - name: Download CEF
+        run: bash packaging/download-cef.sh ${{ env.CEF_DIR }}
+
+      - name: Build
+        run: |
+          mkdir -p build && cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DCEF_ROOT=${{ env.CEF_DIR }}
+          make -j$(nproc)
+          patchelf --set-rpath '$ORIGIN' ofl
+
+      - name: Package binary tar.gz
+        run: |
+          PKGDIR=ofl-${APP_VERSION}-linux-x86_64
+          mkdir -p ${PKGDIR}
+
+          cp build/ofl ${PKGDIR}/
+          cp ${{ env.CEF_DIR }}/Release/libcef.so ${PKGDIR}/
+          cp ${{ env.CEF_DIR }}/Release/libEGL.so ${PKGDIR}/
+          cp ${{ env.CEF_DIR }}/Release/libGLESv2.so ${PKGDIR}/
+          cp ${{ env.CEF_DIR }}/Release/libvk_swiftshader.so ${PKGDIR}/
+          cp ${{ env.CEF_DIR }}/Release/libvulkan.so.1 ${PKGDIR}/
+          cp ${{ env.CEF_DIR }}/Release/v8_context_snapshot.bin ${PKGDIR}/
+          cp ${{ env.CEF_DIR }}/Release/vk_swiftshader_icd.json ${PKGDIR}/
+
+          cp ${{ env.CEF_DIR }}/Resources/icudtl.dat ${PKGDIR}/
+          cp ${{ env.CEF_DIR }}/Resources/chrome_100_percent.pak ${PKGDIR}/
+          cp ${{ env.CEF_DIR }}/Resources/chrome_200_percent.pak ${PKGDIR}/
+          cp ${{ env.CEF_DIR }}/Resources/resources.pak ${PKGDIR}/
+          cp -r ${{ env.CEF_DIR }}/Resources/locales ${PKGDIR}/
+
+          cp data/ofl.svg ${PKGDIR}/
+          cp data/ofl.desktop ${PKGDIR}/
+          cp LICENSE ${PKGDIR}/ 2>/dev/null || true
+          cp README.md ${PKGDIR}/ 2>/dev/null || true
+
+          tar czf build/${PKGDIR}.tar.gz ${PKGDIR}/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ofl-binary
+          path: build/ofl-*-linux-x86_64.tar.gz
+
+  release:
+    needs: [build-deb, build-rpm, build-arch, build-binary]
+    runs-on: ubuntu-24.04
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/ofl-deb/*.deb
+            artifacts/ofl-rpm/*.rpm
+            artifacts/ofl-arch/*.pkg.tar.zst
+            artifacts/ofl-binary/*.tar.gz
+          generate_release_notes: true

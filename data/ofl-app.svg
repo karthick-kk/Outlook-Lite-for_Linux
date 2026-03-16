@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <linearGradient id="envGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#0078d4"/>
+      <stop offset="100%" style="stop-color:#005a9e"/>
+    </linearGradient>
+    <linearGradient id="flapGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#2b88d8"/>
+      <stop offset="100%" style="stop-color:#0078d4"/>
+    </linearGradient>
+    <linearGradient id="oGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffffff"/>
+      <stop offset="100%" style="stop-color:#e8e8e8"/>
+    </linearGradient>
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="115%">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#003060" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  <!-- Envelope body -->
+  <rect x="24" y="56" width="208" height="156" rx="12" ry="12" fill="url(#envGrad)" filter="url(#shadow)"/>
+  <!-- Envelope flap -->
+  <path d="M24,68 L128,148 L232,68" fill="url(#flapGrad)" opacity="0.9"/>
+  <!-- Bottom fold lines -->
+  <path d="M24,212 L100,152" stroke="#004578" stroke-width="1" opacity="0.15" fill="none"/>
+  <path d="M232,212 L156,152" stroke="#004578" stroke-width="1" opacity="0.15" fill="none"/>
+  <!-- Letter "O" -->
+  <ellipse cx="128" cy="148" rx="32" ry="36" fill="none" stroke="url(#oGrad)" stroke-width="10" opacity="0.95"/>
+</svg>

@@ -1,0 +1,13 @@
+build/
+*.o
+*.so
+*.a
+compile_commands.json
+.cache/
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+.opencode/
+.vscode/
+openspec/

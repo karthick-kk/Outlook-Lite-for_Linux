@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+  <!-- Monochrome tray icon — white envelope with O -->
+  <!-- Envelope body -->
+  <rect x="2" y="5" width="20" height="15" rx="2" ry="2" fill="white"/>
+  <!-- Envelope flap -->
+  <path d="M2,7 L12,14 L22,7" fill="white" opacity="0.85"/>
+  <!-- Flap outline for definition -->
+  <path d="M2,7 L12,14 L22,7" fill="none" stroke="#666" stroke-width="0.5" opacity="0.3"/>
+  <!-- Letter O -->
+  <ellipse cx="12" cy="13.5" rx="3.5" ry="4" fill="none" stroke="#0078d4" stroke-width="1.8"/>
+</svg>

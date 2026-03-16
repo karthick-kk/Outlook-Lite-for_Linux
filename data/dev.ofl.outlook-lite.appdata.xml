@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>dev.ofl.outlook-lite</id>
+  <metadata_license>MIT</metadata_license>
+  <project_license>MIT</project_license>
+  <name>Outlook Lite for Linux</name>
+  <summary>Lightweight Outlook client for Linux using WebKitGTK</summary>
+  <description>
+    <p>
+      Outlook Lite for Linux is a lightweight, native wrapper around Microsoft Outlook Web,
+      built with WebKitGTK and C++. It provides system tray integration, desktop notifications,
+      and a minimal memory footprint without bundling a full browser engine.
+    </p>
+  </description>
+  <launchable type="desktop-id">ofl.desktop</launchable>
+  <url type="homepage">https://github.com/karthick-kk/outlook-lite-for-linux</url>
+  <url type="bugtracker">https://github.com/karthick-kk/outlook-lite-for-linux/issues</url>
+  <provides>
+    <binary>ofl</binary>
+  </provides>
+  <content_rating type="oars-1.1" />
+</component>

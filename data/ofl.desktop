@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Outlook Lite for Linux
+Comment=Lightweight Outlook client for Linux
+Exec=ofl %U
+Icon=ofl-app
+Type=Application
+Categories=Network;Email;Calendar;Office;
+MimeType=x-scheme-handler/mailto;
+StartupWMClass=ofl
