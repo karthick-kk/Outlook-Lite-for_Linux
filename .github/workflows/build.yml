@@ -322,16 +322,46 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history for changelog
+
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
 
-      - name: Create Release
+      - name: Generate changelog
+        id: changelog
+        run: |
+          PREV_TAG=$(git tag --sort=-creatordate | head -n 2 | tail -n 1 || true)
+          TAG=${GITHUB_REF#refs/tags/}
+
+          echo "## What's Changed in ${TAG}" > changelog.md
+          echo "" >> changelog.md
+
+          if [ -n "$PREV_TAG" ] && [ "$PREV_TAG" != "$TAG" ]; then
+            git log ${PREV_TAG}..HEAD --pretty=format:"- %s (%h)" --no-merges >> changelog.md
+          else
+            git log --pretty=format:"- %s (%h)" --no-merges >> changelog.md
+          fi
+
+          echo "" >> changelog.md
+          echo "" >> changelog.md
+          echo "### Packages" >> changelog.md
+          echo "| Format | File |" >> changelog.md
+          echo "|--------|------|" >> changelog.md
+          echo "| Debian/Ubuntu | \`ofl_${APP_VERSION}_amd64.deb\` |" >> changelog.md
+          echo "| Fedora/RHEL | \`ofl-${APP_VERSION}-1.*.rpm\` |" >> changelog.md
+          echo "| Arch Linux | \`ofl-${APP_VERSION}-1-x86_64.pkg.tar.zst\` |" >> changelog.md
+          echo "| Portable binary | \`ofl-${APP_VERSION}-linux-x86_64.tar.gz\` |" >> changelog.md
+
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          body_path: changelog.md
           files: |
             artifacts/ofl-deb/*.deb
             artifacts/ofl-rpm/*.rpm
             artifacts/ofl-arch/*.pkg.tar.zst
             artifacts/ofl-binary/*.tar.gz
-          generate_release_notes: true
+          fail_on_unmatched_files: false
