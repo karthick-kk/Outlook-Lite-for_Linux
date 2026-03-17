@@ -70,7 +70,7 @@ add_custom_command(TARGET ofl POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CEF_RES_DIR}/chrome_100_percent.pak ${CEF_LIB_DIR}/chrome_100_percent.pak
     COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CEF_RES_DIR}/chrome_200_percent.pak ${CEF_LIB_DIR}/chrome_200_percent.pak
     COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CEF_RES_DIR}/resources.pak ${CEF_LIB_DIR}/resources.pak
-    COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different ${CEF_RES_DIR}/locales ${CEF_LIB_DIR}/locales
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CEF_RES_DIR}/locales ${CEF_LIB_DIR}/locales
     COMMENT "Copying CEF resources next to libcef.so"
 )
 

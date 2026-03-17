@@ -64,6 +64,7 @@ jobs:
           cp data/ofl.desktop pkg/${PKG}/usr/share/applications/
           cp data/dev.ofl.outlook-lite.appdata.xml pkg/${PKG}/usr/share/metainfo/
           cp data/ofl.svg pkg/${PKG}/usr/share/icons/hicolor/scalable/apps/
+          cp data/ofl-app.svg pkg/${PKG}/usr/share/icons/hicolor/scalable/apps/
 
           cat > pkg/${PKG}/DEBIAN/control << 'EOF'
           Package: ofl
@@ -141,6 +142,7 @@ jobs:
           cp data/ofl.desktop ${DESTDIR}/usr/share/applications/
           cp data/dev.ofl.outlook-lite.appdata.xml ${DESTDIR}/usr/share/metainfo/
           cp data/ofl.svg ${DESTDIR}/usr/share/icons/hicolor/scalable/apps/
+          cp data/ofl-app.svg ${DESTDIR}/usr/share/icons/hicolor/scalable/apps/
 
           cat > ~/rpmbuild/SPECS/ofl.spec << SPEC
           Name:           ofl
@@ -166,6 +168,7 @@ jobs:
           /usr/share/applications/ofl.desktop
           /usr/share/metainfo/dev.ofl.outlook-lite.appdata.xml
           /usr/share/icons/hicolor/scalable/apps/ofl.svg
+          /usr/share/icons/hicolor/scalable/apps/ofl-app.svg
           SPEC
           sed -i 's/^          //' ~/rpmbuild/SPECS/ofl.spec
 
@@ -228,6 +231,7 @@ jobs:
           cp data/ofl.desktop ${PKGDIR}/usr/share/applications/
           cp data/dev.ofl.outlook-lite.appdata.xml ${PKGDIR}/usr/share/metainfo/
           cp data/ofl.svg ${PKGDIR}/usr/share/icons/hicolor/scalable/apps/
+          cp data/ofl-app.svg ${PKGDIR}/usr/share/icons/hicolor/scalable/apps/
 
           PKG_SIZE=$(du -sb ${PKGDIR}/usr | cut -f1)
           cat > ${PKGDIR}/.PKGINFO << EOF
@@ -299,6 +303,7 @@ jobs:
           cp -r ${{ env.CEF_DIR }}/Resources/locales ${PKGDIR}/
 
           cp data/ofl.svg ${PKGDIR}/
+          cp data/ofl-app.svg ${PKGDIR}/
           cp data/ofl.desktop ${PKGDIR}/
           cp LICENSE ${PKGDIR}/ 2>/dev/null || true
           cp README.md ${PKGDIR}/ 2>/dev/null || true

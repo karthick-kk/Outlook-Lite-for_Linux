@@ -51,5 +51,6 @@ EOF
     install -Dm644 data/ofl.desktop "${pkgdir}/usr/share/applications/ofl.desktop"
     install -Dm644 data/dev.ofl.outlook-lite.appdata.xml "${pkgdir}/usr/share/metainfo/dev.ofl.outlook-lite.appdata.xml"
     install -Dm644 data/ofl.svg "${pkgdir}/usr/share/icons/hicolor/scalable/apps/ofl.svg"
+    install -Dm644 data/ofl-app.svg "${pkgdir}/usr/share/icons/hicolor/scalable/apps/ofl-app.svg"
     install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
 }
