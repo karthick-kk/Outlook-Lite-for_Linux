@@ -3,6 +3,7 @@
 #include "window.h"
 #include "config.h"
 #include "notifications.h"
+#include "badge.h"
 #include "include/cef_app.h"
 #include "include/cef_browser.h"
 #include "include/cef_command_line.h"
@@ -75,6 +76,7 @@ int main(int argc, char* argv[]) {
     fprintf(stderr, "[ofl] CEF initialized, data: %s\n", config.data_dir.c_str());
 
     notifications_init();
+    badge_init("ofl.desktop");
 
     CefRefPtr<OflClient> client(new OflClient(config));
 
@@ -98,6 +100,7 @@ int main(int argc, char* argv[]) {
     bv_delegate = nullptr;
     app = nullptr;
 
+    badge_shutdown();
     notifications_shutdown();
     CefShutdown();
     fprintf(stderr, "[ofl] Shutdown complete\n");

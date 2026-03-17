@@ -28,6 +28,7 @@ add_executable(ofl
     src/window.cc
     src/tray.cc
     src/notifications.cc
+    src/badge.cc
 )
 
 target_include_directories(ofl PRIVATE

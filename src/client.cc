@@ -1,6 +1,7 @@
 #include "client.h"
 #include "tray.h"
 #include "notifications.h"
+#include "badge.h"
 #include "include/cef_app.h"
 #include "include/views/cef_browser_view.h"
 #include <cstdio>
@@ -281,6 +282,7 @@ void OflClient::OnTitleChange(CefRefPtr<CefBrowser> browser, const CefString& ti
         tooltip += " (" + std::to_string(badge) + " unread)";
     }
     tray_set_tooltip(tooltip);
+    badge_set_count(badge);
 
     if (badge > last_badge_ && badge > 0) {
         int new_msgs = badge - last_badge_;
@@ -297,6 +299,58 @@ void OflClient::OnTitleChange(CefRefPtr<CefBrowser> browser, const CefString& ti
             window->SetTitle(title);
         }
     }
+}
+
+// --- Console (Web Notification bridge) ---
+
+bool OflClient::OnConsoleMessage(CefRefPtr<CefBrowser> browser,
+                                  cef_log_severity_t level,
+                                  const CefString& message,
+                                  const CefString& source,
+                                  int line) {
+    std::string msg = message.ToString();
+    const std::string notif_prefix = "__OFL_NOTIF__:";
+    const std::string badge_prefix = "__OFL_BADGE__:";
+
+    if (msg.compare(0, notif_prefix.size(), notif_prefix) == 0) {
+        std::string json = msg.substr(notif_prefix.size());
+        // Simple JSON parsing for title and body
+        std::string title, body;
+        auto extract = [&](const std::string& key) -> std::string {
+            std::string needle = "\"" + key + "\":\"";
+            auto pos = json.find(needle);
+            if (pos == std::string::npos) return "";
+            pos += needle.size();
+            auto end = json.find('"', pos);
+            if (end == std::string::npos) return "";
+            return json.substr(pos, end - pos);
+        };
+        title = extract("title");
+        body = extract("body");
+        if (!title.empty()) {
+            notifications_show(title, body);
+        }
+        return true;  // suppress from console log
+    }
+
+    if (msg.compare(0, badge_prefix.size(), badge_prefix) == 0) {
+        std::string count_str = msg.substr(badge_prefix.size());
+        int badge = 0;
+        try { badge = std::stoi(count_str); } catch (...) {}
+
+        badge_set_count(badge);
+
+        std::string tooltip = "Outlook Lite for Linux";
+        if (badge > 0) {
+            tooltip += " (" + std::to_string(badge) + " unread)";
+        }
+        tray_set_tooltip(tooltip);
+
+        last_badge_ = badge;
+        return true;
+    }
+
+    return false;
 }
 
 // --- Request ---
