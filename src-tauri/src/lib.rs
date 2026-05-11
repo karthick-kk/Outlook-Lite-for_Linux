@@ -1,3 +1,4 @@
+pub mod blocker;
 pub mod config;
 
 use config::{load_config, load_window_state, save_window_state, WindowState};
@@ -42,6 +43,11 @@ pub fn run() {
             let window = builder
                 .on_navigation(|url| {
                     let url_str = url.as_str();
+
+                    // Block ad/tracker domains
+                    if blocker::is_blocked(url_str) {
+                        return false;
+                    }
 
                     // Allow internal schemes
                     if url_str == "about:blank" || url_str.starts_with("data:") {
