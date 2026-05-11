@@ -33,7 +33,8 @@ pub fn run() {
                     .inner_size(win_width as f64, win_height as f64)
                     .decorations(decorations)
                     .visible(!start_minimized)
-                    .user_agent(USER_AGENT);
+                    .user_agent(USER_AGENT)
+                    .initialization_script(include_str!("../../src/inject.js"));
 
             // Apply saved position if valid (not -1,-1 which means "let WM decide")
             if win_x >= 0 && win_y >= 0 {
