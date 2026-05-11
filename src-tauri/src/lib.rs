@@ -1,8 +1,14 @@
 pub mod blocker;
 pub mod config;
+pub mod notifications;
 
 use config::{load_config, load_window_state, save_window_state, WindowState};
 use tauri::{Listener, WebviewUrl, WebviewWindowBuilder};
+
+#[tauri::command]
+fn new_mail(sender: String, subject: String) {
+    notifications::show(&sender, &subject);
+}
 
 const USER_AGENT: &str = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36";
 
@@ -22,6 +28,7 @@ pub fn run() {
     let url = cfg.url.clone();
 
     tauri::Builder::default()
+        .invoke_handler(tauri::generate_handler![new_mail])
         .setup(move |app| {
             let external_url: url::Url = url
                 .parse()
