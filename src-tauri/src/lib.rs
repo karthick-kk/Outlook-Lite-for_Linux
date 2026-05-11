@@ -92,6 +92,23 @@ pub fn run() {
                     .user_agent(USER_AGENT)
                     .initialization_script(include_str!("../../src/inject.js"));
 
+            // Inject custom CSS if ~/.config/ofl/custom.css exists
+            let custom_css_path = config::config_dir().join("custom.css");
+            if custom_css_path.exists() {
+                if let Ok(css_content) = std::fs::read_to_string(&custom_css_path) {
+                    let escaped = css_content.replace('`', "\\`").replace("${", "\\${");
+                    let css_js = format!(
+                        r#"(function() {{
+                            var s = document.createElement('style');
+                            s.textContent = `{}`;
+                            document.head.appendChild(s);
+                        }})();"#,
+                        escaped
+                    );
+                    builder = builder.initialization_script(&css_js);
+                }
+            }
+
             // Apply saved position if valid (not -1,-1 which means "let WM decide")
             if win_x >= 0 && win_y >= 0 {
                 builder = builder.position(win_x as f64, win_y as f64);
