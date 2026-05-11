@@ -1,0 +1,24 @@
+{
+  "productName": "Outlook Lite for Linux",
+  "version": "1.0.1",
+  "identifier": "dev.ofl.outlook-lite",
+  "build": {
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "title": "Outlook Lite for Linux",
+        "decorations": false,
+        "width": 1280,
+        "height": 800,
+        "url": "https://outlook.office.com",
+        "transparent": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  }
+}
