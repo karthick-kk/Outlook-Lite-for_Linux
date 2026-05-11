@@ -21,3 +21,4 @@ once_cell = "1"
 dirs = "5"
 nix = { version = "0.29", features = ["fs"] }
 open = "5"
+url = "2"

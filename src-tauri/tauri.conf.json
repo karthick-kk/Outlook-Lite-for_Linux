@@ -7,16 +7,7 @@
   },
   "app": {
     "withGlobalTauri": true,
-    "windows": [
-      {
-        "title": "Outlook Lite for Linux",
-        "decorations": false,
-        "width": 1280,
-        "height": 800,
-        "url": "https://outlook.office.com",
-        "transparent": false
-      }
-    ],
+    "windows": [],
     "security": {
       "csp": null
     }
