@@ -1,13 +1,21 @@
+pub mod badge;
 pub mod blocker;
 pub mod config;
 pub mod notifications;
 
 use config::{load_config, load_window_state, save_window_state, WindowState};
-use tauri::{Listener, WebviewUrl, WebviewWindowBuilder};
+use tauri::{Listener, Manager, WebviewUrl, WebviewWindowBuilder};
+
+pub struct BadgeState(badge::BadgeService);
 
 #[tauri::command]
 fn new_mail(sender: String, subject: String) {
     notifications::show(&sender, &subject);
+}
+
+#[tauri::command]
+async fn update_badge(count: u32, state: tauri::State<'_, BadgeState>) -> Result<(), String> {
+    state.0.set_count(count).await.map_err(|e| e.to_string())
 }
 
 const USER_AGENT: &str = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36";
@@ -28,8 +36,16 @@ pub fn run() {
     let url = cfg.url.clone();
 
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![new_mail])
+        .invoke_handler(tauri::generate_handler![new_mail, update_badge])
         .setup(move |app| {
+            // Initialize badge service for dock unread count
+            let badge_service = tauri::async_runtime::block_on(async {
+                badge::BadgeService::init().await
+            });
+            match badge_service {
+                Ok(svc) => { app.manage(BadgeState(svc)); }
+                Err(e) => eprintln!("Failed to init badge service: {}", e),
+            }
             let external_url: url::Url = url
                 .parse()
                 .unwrap_or_else(|_| "https://outlook.office.com".parse().unwrap());
