@@ -1,5 +1,5 @@
 {
-  "productName": "Outlook Lite for Linux",
+  "productName": "ofl",
   "version": "1.0.1",
   "identifier": "dev.ofl.outlook-lite",
   "build": {
@@ -10,6 +10,31 @@
     "windows": [],
     "security": {
       "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "../data/ofl-app.svg"
+    ],
+    "resources": [],
+    "linux": {
+      "deb": {
+        "depends": [
+          "libwebkit2gtk-4.1-0",
+          "libgtk-3-0",
+          "libayatana-appindicator3-1"
+        ],
+        "desktopTemplate": "../data/ofl.desktop"
+      },
+      "rpm": {
+        "depends": [
+          "webkit2gtk4.1",
+          "gtk3",
+          "libayatana-appindicator-gtk3"
+        ]
+      }
     }
   }
 }
