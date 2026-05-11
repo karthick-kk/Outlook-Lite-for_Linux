@@ -8,6 +8,8 @@ use tauri::{Listener, Manager, WebviewUrl, WebviewWindowBuilder};
 
 pub struct BadgeState(badge::BadgeService);
 
+pub struct DevToolsEnabled(bool);
+
 #[tauri::command]
 fn new_mail(sender: String, subject: String) {
     notifications::show(&sender, &subject);
@@ -18,11 +20,39 @@ async fn update_badge(count: u32, state: tauri::State<'_, BadgeState>) -> Result
     state.0.set_count(count).await.map_err(|e| e.to_string())
 }
 
+#[tauri::command]
+fn reload(window: tauri::WebviewWindow) {
+    let _ = window.eval("window.location.reload()");
+}
+
+#[tauri::command]
+fn reload_no_cache(window: tauri::WebviewWindow) {
+    let _ = window.eval("window.location.reload()");
+}
+
+#[tauri::command]
+fn quit(app: tauri::AppHandle) {
+    app.exit(0);
+}
+
+#[tauri::command]
+fn toggle_devtools(window: tauri::WebviewWindow, state: tauri::State<'_, DevToolsEnabled>) {
+    if !state.0 {
+        return;
+    }
+    if window.is_devtools_open() {
+        window.close_devtools();
+    } else {
+        window.open_devtools();
+    }
+}
+
 const USER_AGENT: &str = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36";
 
 pub fn run() {
     let cfg = load_config();
     let close_to_background = cfg.close_to_background;
+    let dev_tools = cfg.dev_tools;
 
     // Determine initial window geometry from saved state or config defaults
     let saved = load_window_state();
@@ -36,8 +66,11 @@ pub fn run() {
     let url = cfg.url.clone();
 
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![new_mail, update_badge])
+        .invoke_handler(tauri::generate_handler![new_mail, update_badge, reload, reload_no_cache, quit, toggle_devtools])
         .setup(move |app| {
+            // Store dev_tools config as managed state
+            app.manage(DevToolsEnabled(dev_tools));
+
             // Initialize badge service for dock unread count
             let badge_service = tauri::async_runtime::block_on(async {
                 badge::BadgeService::init().await

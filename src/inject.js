@@ -155,5 +155,25 @@
     return Promise.resolve("granted");
   };
 
+  // ---------------------------------------------------------------------------
+  // 6. Keyboard shortcuts
+  // ---------------------------------------------------------------------------
+
+  document.addEventListener('keydown', function(e) {
+    if (e.ctrlKey && e.shiftKey && e.key === 'R') {
+      e.preventDefault();
+      invoke('reload_no_cache');
+    } else if (e.key === 'F5' || (e.ctrlKey && e.key === 'r')) {
+      e.preventDefault();
+      invoke('reload');
+    } else if (e.key === 'F12') {
+      e.preventDefault();
+      invoke('toggle_devtools');
+    } else if (e.ctrlKey && e.key === 'q') {
+      e.preventDefault();
+      invoke('quit');
+    }
+  });
+
   console.log("[OFL] inject.js loaded");
 })();
