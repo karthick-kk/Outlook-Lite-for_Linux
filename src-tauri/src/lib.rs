@@ -39,7 +39,41 @@ pub fn run() {
                 builder = builder.position(win_x as f64, win_y as f64);
             }
 
-            let window = builder.build()?;
+            let window = builder
+                .on_navigation(|url| {
+                    let url_str = url.as_str();
+
+                    // Allow internal schemes
+                    if url_str == "about:blank" || url_str.starts_with("data:") {
+                        return true;
+                    }
+
+                    // Allowed domains for Outlook auth and app
+                    const ALLOWED_DOMAINS: &[&str] = &[
+                        "outlook.office.com",
+                        "outlook.cloud.microsoft",
+                        "outlook.office365.com",
+                        "outlook.live.com",
+                        "login.microsoftonline.com",
+                        "login.live.com",
+                        "login.microsoft.com",
+                        "aadcdn.msftauth.net",
+                        "aadcdn.msauth.net",
+                    ];
+
+                    if let Some(host) = url.host_str() {
+                        for domain in ALLOWED_DOMAINS {
+                            if host == *domain || host.ends_with(&format!(".{}", domain)) {
+                                return true;
+                            }
+                        }
+                    }
+
+                    // External link — open in system browser and cancel navigation
+                    let _ = open::that(url_str);
+                    false
+                })
+                .build()?;
 
             // If start_minimized, minimize after build
             if start_minimized {
