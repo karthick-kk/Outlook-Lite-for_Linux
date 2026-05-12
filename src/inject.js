@@ -1,179 +1,155 @@
 // OFL — Outlook Lite for Linux: JS injection script
-// Hooks audio playback, scrapes unread mail, polls badge count.
+// State is stored in window.__ofl_state for Rust-side polling via eval.
 (function () {
   "use strict";
 
-  // Guard against double-injection
   if (window.__ofl_injected) return;
   window.__ofl_injected = true;
 
-  // ---------------------------------------------------------------------------
-  // Helpers
-  // ---------------------------------------------------------------------------
-
-  function invoke(cmd, args) {
-    try {
-      if (window.__TAURI__ && window.__TAURI__.core) {
-        window.__TAURI__.core.invoke(cmd, args);
-      }
-    } catch (e) {
-      console.warn("[OFL] invoke failed:", cmd, e);
-    }
-  }
+  // Shared state — Rust reads this via eval
+  window.__ofl_state = {
+    notifications: [],
+    badgeCount: -1
+  };
 
   // ---------------------------------------------------------------------------
   // 1. AudioContext.createBufferSource hook
-  //    Outlook uses Web Audio API for notification sounds.
   // ---------------------------------------------------------------------------
 
-  const origCreateBufferSource =
-    AudioContext.prototype.createBufferSource;
-
-  AudioContext.prototype.createBufferSource = function () {
-    const source = origCreateBufferSource.apply(this, arguments);
-    const origStart = source.start.bind(source);
-
-    source.start = function () {
-      // Notification sound detected — scrape mail
-      setTimeout(__ofl_onNewMail, 500);
-      return origStart.apply(this, arguments);
+  var OrigAudioCtx = window.AudioContext || window.webkitAudioContext;
+  if (OrigAudioCtx) {
+    var origCreateBufferSource = OrigAudioCtx.prototype.createBufferSource;
+    OrigAudioCtx.prototype.createBufferSource = function () {
+      var src = origCreateBufferSource.apply(this, arguments);
+      var origStart = src.start;
+      src.start = function () {
+        setTimeout(onNewMail, 800);
+        return origStart.apply(this, arguments);
+      };
+      return src;
     };
-
-    return source;
-  };
+  }
 
   // ---------------------------------------------------------------------------
   // 2. HTMLAudioElement.play hook (fallback)
   // ---------------------------------------------------------------------------
 
-  const origPlay = HTMLAudioElement.prototype.play;
-
+  var origPlay = HTMLAudioElement.prototype.play;
   HTMLAudioElement.prototype.play = function () {
-    setTimeout(__ofl_onNewMail, 500);
+    setTimeout(onNewMail, 800);
     return origPlay.apply(this, arguments);
   };
 
   // ---------------------------------------------------------------------------
-  // 3. Mail scraping — parse unread items from aria-label
+  // 3. New mail handler — push to state queue
   // ---------------------------------------------------------------------------
 
-  const FLAGS_RE =
-    /^(Collapsed|Expanded|Pinned|Replied|Forwarded|Has attachment|External|)\s*/;
-
-  function parseUnreadLabel(label) {
-    // Format: "Unread [flags...] <sender> <subject> <time> <preview>"
-    // Strip leading "Unread" marker
-    let text = label.replace(/^Unread\s*/, "");
-
-    // Strip known flags (they appear as space-separated tokens before sender)
-    let changed = true;
-    while (changed) {
-      changed = false;
-      const m = text.match(FLAGS_RE);
-      if (m && m[0].length > 0) {
-        text = text.slice(m[0].length);
-        changed = true;
-      }
-    }
-
-    // After flags, the next token is the sender (up to first space-separated segment
-    // that looks like a subject). Heuristic: sender is the first "word" or quoted name.
-    // Outlook typically uses the display name as a single token before the subject line.
-    // We split on the first two whitespace-delimited segments.
-    const parts = text.split(/\s+/);
-    const sender = parts[0] || "Unknown";
-    const subject = parts.slice(1, 8).join(" ") || "(no subject)";
-
-    return { sender, subject };
-  }
-
-  window.__ofl_onNewMail = function __ofl_onNewMail() {
+  function onNewMail() {
     try {
-      const items = document.querySelectorAll('[aria-label^="Unread"]');
-      if (items.length === 0) return;
+      var unread = document.querySelectorAll('[aria-label^="Unread"]');
+      var sender = "New mail";
+      var subject = "You have a new message";
 
-      // Only report the first (newest) unread item
-      const label = items[0].getAttribute("aria-label") || "";
-      const { sender, subject } = parseUnreadLabel(label);
+      if (unread.length > 0) {
+        var item = unread[0];
+        var label = item.getAttribute("aria-label") || "";
 
-      invoke("new_mail", { sender, subject });
-    } catch (e) {
-      console.warn("[OFL] mail scrape error:", e);
-    }
-  };
+        var rest = label
+          .replace(/^Unread\s*/, "")
+          .replace(/^Collapsed\s*/, "")
+          .replace(/^Expanded\s*/, "")
+          .replace(/^Pinned\s*/, "")
+          .replace(/^Replied\s*/, "")
+          .replace(/^Forwarded\s*/, "")
+          .replace(/^Has attachment\s*/, "")
+          .replace(/^External\s*/, "")
+          .replace(/^sender\s*/, "");
 
-  // ---------------------------------------------------------------------------
-  // 4. Badge polling — check inbox unread count every 3 seconds
-  // ---------------------------------------------------------------------------
-
-  let lastBadgeCount = -1;
-
-  function pollBadge() {
-    try {
-      const inbox = document.querySelector('[data-folder-name="inbox"]');
-      if (!inbox) return;
-
-      const title = inbox.getAttribute("title") || "";
-      const m = title.match(/\((\d+)\s+unread\)/i);
-      const count = m ? parseInt(m[1], 10) : 0;
-
-      if (count !== lastBadgeCount) {
-        lastBadgeCount = count;
-        invoke("update_badge", { count });
+        var timeMatch = rest.match(/\s+\d{1,2}:\d{2}\s*(AM|PM)?\s/i);
+        if (timeMatch) {
+          var beforeTime = rest.substring(0, timeMatch.index).trim();
+          var parts = beforeTime.split(/\s{2,}/);
+          if (parts.length >= 2) {
+            sender = parts[0];
+            subject = parts.slice(1).join(" ");
+          } else {
+            sender = beforeTime;
+          }
+        } else {
+          sender = rest.substring(0, 50);
+        }
       }
+
+      window.__ofl_state.notifications.push({ sender: sender, subject: subject });
     } catch (e) {
-      console.warn("[OFL] badge poll error:", e);
+      window.__ofl_state.notifications.push({ sender: "New mail", subject: "You have a new message" });
     }
   }
 
-  setInterval(pollBadge, 3000);
-  // Run once immediately after DOM is likely ready
-  setTimeout(pollBadge, 2000);
-
   // ---------------------------------------------------------------------------
-  // 5. Notification API shim (fallback)
-  //    Intercept browser Notification to route through native notifications.
+  // 4. Badge count polling — updates state
   // ---------------------------------------------------------------------------
 
-  const OrigNotification = window.Notification;
-
-  window.Notification = function (title, options) {
-    const body = (options && options.body) || "";
-    invoke("new_mail", { sender: title, subject: body });
-    // Still create the original notification for Outlook's internal tracking
+  function checkBadge() {
     try {
-      return new OrigNotification(title, options);
-    } catch (e) {
-      return {};
-    }
-  };
+      var count = 0;
+      var inbox = document.querySelector(
+        '[data-folder-name="inbox"], [title*="Inbox"]'
+      );
+      if (inbox) {
+        var title = inbox.getAttribute("title") || "";
+        var match = title.match(/\((\d+)\s*unread\)/i);
+        if (match) count = parseInt(match[1], 10);
+      }
+      if (!count) {
+        var unread = document.querySelectorAll('[aria-label^="Unread"]');
+        if (unread.length > 0) count = unread.length;
+      }
+      window.__ofl_state.badgeCount = count;
+    } catch (e) {}
+  }
+  setInterval(checkBadge, 3000);
+  setTimeout(checkBadge, 5000);
 
-  // Preserve static properties
-  window.Notification.permission = "granted";
-  window.Notification.requestPermission = function (cb) {
-    if (cb) cb("granted");
-    return Promise.resolve("granted");
-  };
+  // ---------------------------------------------------------------------------
+  // 5. Notification API shim
+  // ---------------------------------------------------------------------------
+
+  var OrigNotification = window.Notification;
+  if (OrigNotification) {
+    function OflNotification(title, options) {
+      options = options || {};
+      window.__ofl_state.notifications.push({
+        sender: title || "New mail",
+        subject: options.body || "You have a new message"
+      });
+      try { return new OrigNotification(title, options); } catch (e) { return {}; }
+    }
+    OflNotification.prototype = OrigNotification.prototype;
+    Object.defineProperty(OflNotification, "permission", {
+      get: function () { return "granted"; },
+    });
+    OflNotification.requestPermission = function (cb) {
+      if (cb) cb("granted");
+      return Promise.resolve("granted");
+    };
+    window.Notification = OflNotification;
+  }
 
   // ---------------------------------------------------------------------------
   // 6. Keyboard shortcuts
   // ---------------------------------------------------------------------------
 
-  document.addEventListener('keydown', function(e) {
-    if (e.ctrlKey && e.shiftKey && e.key === 'R') {
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "F5" || (e.ctrlKey && !e.shiftKey && e.key === "r")) {
       e.preventDefault();
-      invoke('reload_no_cache');
-    } else if (e.key === 'F5' || (e.ctrlKey && e.key === 'r')) {
+      window.location.reload();
+    } else if (e.ctrlKey && e.shiftKey && e.key === "R") {
       e.preventDefault();
-      invoke('reload');
-    } else if (e.key === 'F12') {
+      window.location.reload();
+    } else if (e.ctrlKey && e.key === "q") {
       e.preventDefault();
-      invoke('toggle_devtools');
-    } else if (e.ctrlKey && e.key === 'q') {
-      e.preventDefault();
-      invoke('quit');
+      window.__ofl_state.quit = true;
     }
   });
-
-  console.log("[OFL] inject.js loaded");
 })();

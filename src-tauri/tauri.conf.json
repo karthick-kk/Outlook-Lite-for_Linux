@@ -16,7 +16,7 @@
     "active": true,
     "targets": "all",
     "icon": [
-      "../data/ofl-app.svg"
+      "icons/icon.png"
     ],
     "resources": [],
     "linux": {
@@ -26,7 +26,11 @@
           "libgtk-3-0",
           "libayatana-appindicator3-1"
         ],
-        "desktopTemplate": "../data/ofl.desktop"
+        "desktopTemplate": "../data/ofl.desktop",
+        "files": {
+          "/usr/share/icons/hicolor/scalable/apps/ofl-app.svg": "../data/ofl-app.svg",
+          "/usr/share/icons/hicolor/scalable/apps/ofl.svg": "../data/ofl.svg"
+        }
       },
       "rpm": {
         "depends": [
