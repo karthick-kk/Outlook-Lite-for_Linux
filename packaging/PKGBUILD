@@ -1,6 +1,6 @@
 # Maintainer: ofl <ofl@dev.ofl>
 pkgname=ofl
-pkgver=2.0.0
+pkgver=2.0.1
 pkgrel=1
 pkgdesc="Outlook Lite for Linux — lightweight native Outlook client"
 arch=('x86_64')
