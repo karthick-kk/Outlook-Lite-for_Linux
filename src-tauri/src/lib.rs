@@ -7,6 +7,11 @@ use config::{load_config, load_window_state, save_window_state, WindowState};
 use tauri::{Listener, Manager, WebviewUrl, WebviewWindowBuilder};
 use std::sync::atomic::{AtomicI32, Ordering};
 use webkit2gtk::WebViewExt;
+use webkit2gtk::NavigationPolicyDecision;
+use webkit2gtk::NavigationPolicyDecisionExt;
+use webkit2gtk::PolicyDecisionExt;
+use webkit2gtk::PolicyDecisionType;
+use webkit2gtk::URIRequestExt;
 use webkit2gtk::glib;
 use webkit2gtk::gio;
 use java_script_core::ValueExt;
@@ -176,6 +181,32 @@ pub fn run() {
                     false
                 })
                 .build()?;
+
+            // Handle new-window requests (target="_blank" links) via WebKitGTK signal
+            let _ = window.with_webview(|webview| {
+                use glib::object::ObjectExt;
+                use glib::Cast;
+                let wv = webview.inner();
+                wv.connect("decide-policy", false, |values| {
+                    let decision = values[1].get::<webkit2gtk::PolicyDecision>().unwrap();
+                    let decision_type = values[2].get::<PolicyDecisionType>().unwrap();
+
+                    if decision_type == PolicyDecisionType::NewWindowAction {
+                        let nav_decision: NavigationPolicyDecision = unsafe { decision.unsafe_cast() };
+                        if let Some(request) = nav_decision.request() {
+                            if let Some(uri) = request.uri() {
+                                let url = uri.to_string();
+                                if !url.is_empty() {
+                                    let _ = open::that(&url);
+                                }
+                            }
+                        }
+                        nav_decision.ignore();
+                        return Some(true.into());
+                    }
+                    Some(false.into())
+                });
+            });
 
             if start_minimized {
                 let _ = window.minimize();
