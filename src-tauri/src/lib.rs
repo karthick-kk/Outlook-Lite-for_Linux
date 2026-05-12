@@ -248,6 +248,7 @@ pub fn run() {
                                 var result = {
                                     n: s.notifications.splice(0, s.notifications.length),
                                     b: s.badgeCount,
+                                    u: (s.pendingUrls || []).splice(0, (s.pendingUrls || []).length),
                                     q: !!s.quit
                                 };
                                 return JSON.stringify(result);
@@ -289,6 +290,22 @@ pub fn run() {
                                             tauri::async_runtime::spawn(async move {
                                                 badge::set_count_global(count).await;
                                             });
+                                        }
+                                    }
+                                }
+
+                                // Process pending URLs (open in system browser)
+                                if let Some(u_start) = s.find("\"u\":[") {
+                                    let rest = &s[u_start + 4..];
+                                    if let Some(arr_end) = rest.find(']') {
+                                        let arr = &rest[1..arr_end];
+                                        if !arr.is_empty() {
+                                            for url in arr.split("\",\"") {
+                                                let url = url.trim_start_matches('"').trim_end_matches('"');
+                                                if !url.is_empty() {
+                                                    let _ = open::that(url);
+                                                }
+                                            }
                                         }
                                     }
                                 }

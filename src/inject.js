@@ -152,4 +152,71 @@
       window.__ofl_state.quit = true;
     }
   });
+
+  // ---------------------------------------------------------------------------
+  // 7. External link handling (target="_blank" and regular external links)
+  // ---------------------------------------------------------------------------
+
+  // Store URLs to open externally — Rust polls this
+  window.__ofl_state.pendingUrls = [];
+
+  document.addEventListener("click", function (e) {
+    var link = e.target.closest("a[href]");
+    if (!link) return;
+    var href = link.getAttribute("href");
+    if (!href || href.startsWith("#") || href.startsWith("javascript:")) return;
+
+    try {
+      var url = new URL(href, window.location.origin);
+      var host = url.hostname;
+      var allowed = [
+        "outlook.office.com",
+        "outlook.cloud.microsoft",
+        "outlook.office365.com",
+        "outlook.live.com",
+        "login.microsoftonline.com",
+        "login.live.com",
+        "login.microsoft.com",
+        "aadcdn.msftauth.net",
+        "aadcdn.msauth.net"
+      ];
+      var isAllowed = allowed.some(function(d) {
+        return host === d || host.endsWith("." + d);
+      });
+      if (!isAllowed) {
+        e.preventDefault();
+        e.stopPropagation();
+        window.__ofl_state.pendingUrls.push(url.href);
+      }
+    } catch(ex) {}
+  }, true);
+
+  // Also override window.open for target="_blank" links
+  var origOpen = window.open;
+  window.open = function(url) {
+    if (!url) return origOpen.apply(this, arguments);
+    try {
+      var parsed = new URL(url, window.location.origin);
+      var host = parsed.hostname;
+      var allowed = [
+        "outlook.office.com",
+        "outlook.cloud.microsoft",
+        "outlook.office365.com",
+        "outlook.live.com",
+        "login.microsoftonline.com",
+        "login.live.com",
+        "login.microsoft.com",
+        "aadcdn.msftauth.net",
+        "aadcdn.msauth.net"
+      ];
+      var isAllowed = allowed.some(function(d) {
+        return host === d || host.endsWith("." + d);
+      });
+      if (!isAllowed) {
+        window.__ofl_state.pendingUrls.push(parsed.href);
+        return null;
+      }
+    } catch(ex) {}
+    return origOpen.apply(this, arguments);
+  };
 })();
