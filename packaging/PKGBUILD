@@ -1,6 +1,6 @@
 # Maintainer: ofl <ofl@dev.ofl>
 pkgname=ofl
-pkgver=1.0.1
+pkgver=2.0.0
 pkgrel=1
 pkgdesc="Outlook Lite for Linux — lightweight native Outlook client"
 arch=('x86_64')
@@ -11,15 +11,14 @@ makedepends=('rust' 'cargo')
 source=()
 
 build() {
-    cd "$startdir"
+    cd "$startdir/.."
     cargo build --release --manifest-path src-tauri/Cargo.toml
 }
 
 package() {
-    cd "$startdir"
+    cd "$startdir/.."
     install -Dm755 src-tauri/target/release/ofl "${pkgdir}/usr/bin/ofl"
     install -Dm644 data/ofl.desktop "${pkgdir}/usr/share/applications/ofl.desktop"
     install -Dm644 data/ofl.svg "${pkgdir}/usr/share/icons/hicolor/scalable/apps/ofl.svg"
     install -Dm644 data/ofl-app.svg "${pkgdir}/usr/share/icons/hicolor/scalable/apps/ofl-app.svg"
-    install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
 }
