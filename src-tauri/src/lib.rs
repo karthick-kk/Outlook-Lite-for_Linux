@@ -183,6 +183,7 @@ pub fn run() {
                 .build()?;
 
             // Handle new-window requests (target="_blank" links) via WebKitGTK signal
+            let poll_window_nav = window.clone();
             let _ = window.with_webview(|webview| {
                 use glib::object::ObjectExt;
                 use glib::Cast;
@@ -197,7 +198,28 @@ pub fn run() {
                             if let Some(uri) = request.uri() {
                                 let url = uri.to_string();
                                 if !url.is_empty() {
-                                    let _ = open::that(&url);
+                                    // Check if it's an auth/Outlook domain — navigate in-webview
+                                    let is_internal = [
+                                        "outlook.office.com",
+                                        "outlook.cloud.microsoft",
+                                        "outlook.office365.com",
+                                        "outlook.live.com",
+                                        "login.microsoftonline.com",
+                                        "login.live.com",
+                                        "login.microsoft.com",
+                                        "aadcdn.msftauth.net",
+                                        "aadcdn.msauth.net",
+                                    ].iter().any(|domain| {
+                                        url.contains(domain)
+                                    });
+
+                                    if is_internal {
+                                        // Use the webview from the signal source
+                                        let source_wv = values[0].get::<webkit2gtk::WebView>().unwrap();
+                                        source_wv.load_uri(&url);
+                                    } else {
+                                        let _ = open::that(&url);
+                                    }
                                 }
                             }
                         }

@@ -35,7 +35,7 @@ impl Default for OflConfig {
             y: -1,
             dev_tools: false,
             start_minimized: false,
-            close_to_background: true,
+            close_to_background: false,
             frameless: true,
         }
     }
